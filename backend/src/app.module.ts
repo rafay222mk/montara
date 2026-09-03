@@ -40,6 +40,9 @@ import { AiModule } from './ai/ai.module';
         autoLoadEntities: true,
 
         synchronize: false,
+        ssl: process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
       }),
     }),
 
@@ -66,11 +69,11 @@ import { AiModule } from './ai/ai.module';
     CurriculumModule,
 
     GamificationModule,
-    
+
     HrModule,
-    
+
     InventoryModule,
-    
+
     CommunicationModule,
 
     AdminModule,
@@ -80,4 +83,4 @@ import { AiModule } from './ai/ai.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
