@@ -5,8 +5,7 @@
       "framework": "nextjs"
     },
     "backend": {
-      "root": "backend",
-      "entrypoint": "dist/main.js"
+      "root": "backend"
     }
   },
   "rewrites": [
