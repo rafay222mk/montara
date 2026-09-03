@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 22% 9%;
+    --foreground: 210 20% 94%;
+    --card: 222 20% 12%;
+    --card-foreground: 210 20% 94%;
+    --popover: 222 22% 11%;
+    --popover-foreground: 210 20% 94%;
+    --primary: 158 39% 55%;
+    --primary-foreground: 222 22% 9%;
+    --secondary: 38 57% 61%;
+    --secondary-foreground: 222 22% 9%;
+    --muted: 220 17% 17%;
+    --muted-foreground: 215 14% 63%;
+    --accent: 166 27% 18%;
+    --accent-foreground: 158 45% 78%;
+    --destructive: 4 59% 55%;
+    --destructive-foreground: 210 20% 96%;
+    --border: 220 17% 21%;
+    --input: 220 17% 21%;
+    --ring: 158 39% 55%;
+    --chart-1: 158 39% 55%;
+    --chart-2: 38 57% 61%;
+    --chart-3: 199 54% 62%;
+    --chart-4: 349 51% 67%;
+    --chart-5: 260 27% 68%;
+    --radius: .625rem;
+  }
+  * { @apply border-border; }
+  html { color-scheme: dark; }
+  body { @apply bg-background text-foreground antialiased; font-feature-settings: 'ss01' 1, 'cv11' 1; }
+}
+
+@layer components {
+  .surface { @apply border border-border/80 bg-card; }
+  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground; }
+  .subtle-grid { background-image: linear-gradient(hsl(var(--border) / .18) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / .18) 1px, transparent 1px); background-size: 32px 32px; }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .65); }

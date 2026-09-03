@@ -1,0 +1,6 @@
+export enum AssessmentLevel {
+  BEGINNING = 'BEGINNING',
+  DEVELOPING = 'DEVELOPING',
+  PROFICIENT = 'PROFICIENT',
+  ADVANCED = 'ADVANCED',
+}

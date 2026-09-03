@@ -1,0 +1,69 @@
+# ==========================================
+# Montara ERP - Root .gitignore
+# ==========================================
+
+# AI IDE & Editor Metadata
+.ai/
+.agents/
+.gemini/
+.cursor/
+.bolt/
+.vscode/
+.idea/
+*.sublime-workspace
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs & Next.js
+dist/
+*/dist/
+.next/
+*/.next/
+build/
+*/build/
+out/
+*/out/
+*.tsbuildinfo
+
+# Environment & Secrets (Keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+*.env
+*.env.local
+backend/.env
+frontend/.env.local
+!*.env.example
+
+# Logs & Debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing & Coverage
+coverage/
+*/coverage/
+.nyc_output/
+
+# Temporary & Runtime Files
+.temp/
+.tmp/
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.pem

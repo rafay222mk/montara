@@ -1,0 +1,7 @@
+export enum LessonPlanStatus {
+  PLANNED = 'PLANNED',
+  PRESENTED = 'PRESENTED',
+  PRACTICING = 'PRACTICING',
+  MASTERED = 'MASTERED',
+  DEFERRED = 'DEFERRED',
+}

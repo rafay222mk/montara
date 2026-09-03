@@ -1,0 +1,7 @@
+export enum FeeFrequency {
+  MONTHLY = 'MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  SEMESTER = 'SEMESTER',
+  YEARLY = 'YEARLY',
+  ONE_TIME = 'ONE_TIME',
+}

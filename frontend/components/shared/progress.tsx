@@ -1,0 +1,5 @@
+import { cn } from '@/lib/utils';
+
+export function ProgressBar({ value, label, showValue = true, className }: { value: number; label?: string; showValue?: boolean; className?: string }) { return <div className={cn('w-full', className)}>{(label || showValue) && <div className="mb-2 flex items-center justify-between text-xs"><span className="text-muted-foreground">{label}</span>{showValue && <span className="font-medium text-foreground">{value}%</span>}</div>}<div className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div></div>; }
+
+export function ProgressRing({ value, label = 'Overall' }: { value: number; label?: string }) { return <div className="relative flex h-32 w-32 items-center justify-center rounded-full" style={{ background: `conic-gradient(hsl(var(--primary)) 0 ${value}%, hsl(var(--muted)) ${value}% 100%)` }}><div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-card"><span className="text-2xl font-semibold">{value}%</span><span className="text-[10px] text-muted-foreground">{label}</span></div></div>; }
