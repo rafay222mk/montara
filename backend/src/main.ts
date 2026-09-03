@@ -2,9 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
-import serverless from 'serverless-http';
-
-let cachedHandler: any;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,15 +21,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.init();
-
-  return serverless(app.getHttpAdapter().getInstance());
+  await app.listen(process.env.PORT ?? 3000);
 }
 
-export default async function handler(req: any, res: any) {
-  if (!cachedHandler) {
-    cachedHandler = await bootstrap();
-  }
-
-  return cachedHandler(req, res);
-}
+bootstrap();
