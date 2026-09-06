@@ -186,12 +186,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </span>
           </span>
         </Link>
-        <button
-          className="hidden rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground lg:block"
-          aria-label="Collapse sidebar"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
       </div>
 
       <nav

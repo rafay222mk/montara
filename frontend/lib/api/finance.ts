@@ -12,6 +12,12 @@ export const financeApi = {
     create: (dto: { name: string; amount: number; frequency: string; description?: string }) => {
       return apiClient.post<ApiFeeStructure, typeof dto>(`${apiPaths.finance}/fee-structures`, dto);
     },
+    get: (id: string) => {
+      return apiClient.get<ApiFeeStructure>(`${apiPaths.finance}/fee-structures/${id}`);
+    },
+    update: (id: string, dto: Partial<{ name: string; amount: number; frequency: string; description?: string }>) => {
+      return apiClient.patch<ApiFeeStructure, typeof dto>(`${apiPaths.finance}/fee-structures/${id}`, dto);
+    },
     delete: (id: string) => {
       return apiClient.delete<any>(`${apiPaths.finance}/fee-structures/${id}`);
     },

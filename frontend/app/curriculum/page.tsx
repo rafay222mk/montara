@@ -1,9 +1,10 @@
 'use client';
 
-import { BookOpen, Search, Layers, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { BookOpen, Search, Layers, Plus, Trash2, CheckCircle, Pencil } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { LessonForm } from '@/components/forms/record-forms';
+import { ConfirmDialog } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,13 +51,15 @@ const montessoriAreas: MontessoriArea[] = [
 export default function CurriculumPage() {
   const { user } = useAuth();
   const canManage = user ? hasPermission(user.role, 'curriculum.manage') : false;
+  const canDelete = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
 
   const [items, setItems] = useState<CurriculumLesson[]>([]);
   const [selectedArea, setSelectedArea] = useState<MontessoriArea | 'all'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingLesson, setDeletingLesson] = useState<CurriculumLesson | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadLessons = useCallback(async () => {
     setLoading(true);
@@ -79,16 +82,17 @@ export default function CurriculumPage() {
     return () => clearTimeout(timer);
   }, [loadLessons]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this lesson from the curriculum catalog?')) return;
-    setDeleting(id);
+  const handleDeleteConfirm = async () => {
+    if (!deletingLesson) return;
+    setDeleting(true);
     try {
-      await curriculumApi.lessons.delete(id);
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      await curriculumApi.lessons.delete(deletingLesson.id);
+      setItems((prev) => prev.filter((item) => item.id !== deletingLesson.id));
+      setDeletingLesson(null);
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete lesson');
+      console.error('Failed to delete lesson:', err);
     } finally {
-      setDeleting(null);
+      setDeleting(false);
     }
   };
 
@@ -202,17 +206,35 @@ export default function CurriculumPage() {
                       </span>
                       <span className="text-sm font-medium leading-snug text-foreground">{lesson.title}</span>
                     </div>
-                    {canManage && (
-                      <button
-                        id={`delete-lesson-${lesson.id}`}
-                        onClick={() => handleDelete(lesson.id)}
-                        disabled={deleting === lesson.id}
-                        className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                        aria-label="Delete lesson"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canManage && (
+                        <LessonForm
+                          lessonId={lesson.id}
+                          onSuccess={loadLessons}
+                          trigger={
+                            <button
+                              className="shrink-0 rounded p-1 text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+                              aria-label="Edit lesson"
+                              title="Edit lesson"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          }
+                        />
+                      )}
+                      {canDelete && (
+                        <button
+                          id={`delete-lesson-${lesson.id}`}
+                          onClick={() => setDeletingLesson(lesson)}
+                          disabled={deleting}
+                          className="shrink-0 rounded p-1 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Delete lesson"
+                          title="Delete lesson"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-muted-foreground line-clamp-2">
@@ -235,6 +257,15 @@ export default function CurriculumPage() {
             </div>
           </div>
         ))}
+
+        <ConfirmDialog
+          open={!!deletingLesson}
+          onOpenChange={(open) => !open && setDeletingLesson(null)}
+          title="Delete Lesson"
+          description={deletingLesson ? `Are you sure you want to remove "${deletingLesson.title}" from the curriculum catalog?` : ''}
+          confirmLabel="Delete"
+          onConfirm={handleDeleteConfirm}
+        />
       </div>
     </AppShell>
   );

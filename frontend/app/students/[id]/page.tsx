@@ -9,7 +9,6 @@ import { AreaBadge, AvatarText, ObservationCard, AssessmentCard, ProgressBar, Pr
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { assessments, observations, payments, learningProgressData, attendanceRecords } from '@/lib/mock-data';
 import { studentsApi } from '@/lib/api/students';
 import { observationsApi } from '@/lib/api/observations';
 import { assessmentsApi } from '@/lib/api/assessments';
@@ -106,19 +105,13 @@ export default function StudentDetailPage() {
   };
 
   const isEditable = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
-
-  // Fallback to static mock datasets using constant 's1' key to keep unintegrated visual tabs populated
-  const mockStudentId = 's1';
-  const studentObservations = realObservations.length ? realObservations : observations.filter((o) => o.studentId === mockStudentId);
-  const studentAssessments = realAssessments.length ? realAssessments : assessments.filter((a) => a.studentId === mockStudentId);
-  const studentPayments = realPayments.length ? realPayments : payments.filter((p) => p.studentId === mockStudentId);
-  const progress = learningProgressData.find((p) => p.studentId === mockStudentId) || learningProgressData[0];
-  const progressDisplay = realProgress || progress;
-  const studentAttendance = realAttendance.length ? realAttendance : attendanceRecords.filter((a) => a.studentId === mockStudentId);
+  const canManage = isEditable;
+  const backHref = user?.role === 'PARENT' ? '/parent' : '/students';
+  const backLabel = user?.role === 'PARENT' ? 'Back to family portal' : 'Back to students';
 
   const calculatedAttendanceRate = realAttendance.length
-    ? Math.round((realAttendance.filter((a) => a.status === 'Present' || a.status === 'Late').length / realAttendance.length) * 100)
-    : 96;
+    ? `${Math.round((realAttendance.filter((a) => a.status === 'Present' || a.status === 'Late').length / realAttendance.length) * 100)}%`
+    : '—';
 
   const calculatedOutstandingBalance = realStudentFees.length
     ? realStudentFees.reduce((sum, f) => sum + (f.balance || 0), 0)
@@ -137,8 +130,8 @@ export default function StudentDetailPage() {
   if (error || !student) {
     return (
       <AppShell>
-        <Link href="/students" className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to students
+        <Link href={backHref} className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
         </Link>
         <div className="rounded-lg bg-destructive/15 p-4 text-sm text-destructive mt-4">
           {error || 'Student profile not found'}
@@ -149,8 +142,8 @@ export default function StudentDetailPage() {
 
   return (
     <AppShell>
-      <Link href="/students" className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to students
+      <Link href={backHref} className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
       </Link>
 
       <div className="mb-7 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
@@ -160,42 +153,57 @@ export default function StudentDetailPage() {
           </span>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{student.name}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{student.name}</h1>
               <StatusBadge status={student.status} />
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {student.classroom} · {student.age} · Joined {student.joined}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {student.classroom} · Enrolled {student.joined} · {student.age}
             </p>
           </div>
         </div>
+
         {isEditable && (
-          <StudentForm studentId={student.id} onSuccess={loadStudent} trigger={
-            <Button variant="outline">Edit profile</Button>
-          } />
+          <StudentForm
+            studentId={student.id}
+            onSuccess={loadStudent}
+            trigger={<Button variant="outline">Edit student profile</Button>}
+          />
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <CalendarCheck className="h-4 w-4" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300">
+              <CheckCircle2 className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-xl font-semibold">{calculatedAttendanceRate}%</p>
-              <p className="text-xs text-muted-foreground">Attendance</p>
+              <p className="text-xl font-semibold">{calculatedAttendanceRate}</p>
+              <p className="text-xs text-muted-foreground">Attendance rate</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-400/10 text-amber-300">
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-xl font-semibold">{progressDisplay.overallScore}%</p>
-              <p className="text-xs text-muted-foreground">Learning progress</p>
+              <p className="text-xl font-semibold">{realObservations.length}</p>
+              <p className="text-xs text-muted-foreground">Observations</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <CalendarCheck className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xl font-semibold">{realAssessments.length}</p>
+              <p className="text-xs text-muted-foreground">Assessments</p>
             </div>
           </CardContent>
         </Card>
@@ -263,19 +271,23 @@ export default function StudentDetailPage() {
                   <Link href="/observations" className="text-xs text-primary">View all</Link>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {studentObservations.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex gap-3 border-b border-border/70 pb-4 last:border-0 last:pb-0">
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-medium">{item.area}</p>
-                          <StatusBadge status={item.progress} />
+                  {realObservations.length > 0 ? (
+                    realObservations.slice(0, 3).map((item) => (
+                      <div key={item.id} className="flex gap-3 border-b border-border/70 pb-4 last:border-0 last:pb-0">
+                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium">{item.area}</p>
+                            <StatusBadge status={item.progress} />
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.note}</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground/70">{item.date}</p>
                         </div>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.note}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground/70">{item.date}</p>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No observations recorded yet.</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -286,25 +298,39 @@ export default function StudentDetailPage() {
                   <CardTitle className="text-[15px]">Learning progress</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center pb-6 pt-2">
-                  <ProgressRing value={progress.overallScore} label="overall" />
-                  <p className="mt-4 text-xs text-muted-foreground">Strongest area: {progress.strongestArea}</p>
+                  {realProgress && realProgress.areas.length > 0 ? (
+                    <>
+                      <ProgressRing value={realProgress.overallScore} label="overall" />
+                      <p className="mt-4 text-xs text-muted-foreground">Strongest area: {realProgress.strongestArea}</p>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                      <p className="text-xs text-muted-foreground">No assessment scores recorded yet.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-[15px]">Recent assessments</CardTitle>
+                  <Link href="/assessments" className="text-xs text-primary">View all</Link>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {studentAssessments.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">{item.area} · {item.date}</p>
+                  {realAssessments.length > 0 ? (
+                    realAssessments.slice(0, 3).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{item.title}</p>
+                          <p className="text-xs text-muted-foreground">{item.area} · {item.date}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-primary">{item.score}%</span>
                       </div>
-                      <span className="text-sm font-semibold text-primary">{item.score}%</span>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No assessments recorded yet.</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -365,12 +391,12 @@ export default function StudentDetailPage() {
               <CardTitle className="text-[15px]">Attendance records</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {studentAttendance.length ? (
-                studentAttendance.map((record) => (
+              {realAttendance.length ? (
+                realAttendance.map((record) => (
                   <div key={record.id} className="flex items-center justify-between border-b border-border/70 pb-3 last:border-0">
                     <div>
                       <p className="text-sm font-medium">{record.date}</p>
-                      <p className="text-xs text-muted-foreground">{record.arrivalTime || 'No arrival'}</p>
+                      <p className="text-xs text-muted-foreground">{record.arrivalTime || 'No arrival time noted'}</p>
                     </div>
                     <StatusBadge status={record.status} />
                   </div>
@@ -385,7 +411,15 @@ export default function StudentDetailPage() {
         <TabsContent value="observations" className="mt-4">
           <div className="grid gap-4 lg:grid-cols-2">
             {realObservations.length ? (
-              realObservations.map((item) => <ObservationCard key={item.id} observation={item} />)
+              realObservations.map((item) => (
+                <ObservationCard
+                  key={item.id}
+                  observation={item}
+                  canManage={canManage}
+                  onUpdated={loadStudent}
+                  onDeleted={loadStudent}
+                />
+              ))
             ) : (
               <p className="text-sm text-muted-foreground">No observations recorded yet.</p>
             )}
@@ -395,7 +429,15 @@ export default function StudentDetailPage() {
         <TabsContent value="assessments" className="mt-4">
           <div className="grid gap-4 lg:grid-cols-2">
             {realAssessments.length ? (
-              realAssessments.map((item) => <AssessmentCard key={item.id} assessment={item} />)
+              realAssessments.map((item) => (
+                <AssessmentCard
+                  key={item.id}
+                  assessment={item}
+                  canManage={canManage}
+                  onUpdated={loadStudent}
+                  onDeleted={loadStudent}
+                />
+              ))
             ) : (
               <p className="text-sm text-muted-foreground">No assessments recorded yet.</p>
             )}
@@ -403,53 +445,65 @@ export default function StudentDetailPage() {
         </TabsContent>
 
         <TabsContent value="progress" className="mt-4">
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-[15px]">Overall progress</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center pb-6 pt-2">
-                <ProgressRing value={progressDisplay.overallScore} label="overall" />
-                <p className="mt-4 text-xs text-muted-foreground">Strongest area: {progressDisplay.strongestArea}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{progressDisplay.totalAssessments} assessments recorded</p>
-              </CardContent>
-            </Card>
+          {realProgress && realProgress.areas.length > 0 ? (
+            <div className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-[15px]">Overall progress</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center pb-6 pt-2">
+                    <ProgressRing value={realProgress.overallScore} label="overall" />
+                    <p className="mt-4 text-xs text-muted-foreground">Strongest area: {realProgress.strongestArea}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{realProgress.totalAssessments} assessments recorded</p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-[15px]">Progress by area</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {progressDisplay.areas.map((area) => (
-                  <div key={area.area}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <AreaBadge area={area.area} />
-                      <StatusBadge status={area.level} />
-                    </div>
-                    <ProgressBar value={area.score} showValue />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {progressDisplay.areasNeedingAttention.length > 0 && (
-            <div className="mt-6">
-              <SectionHeader title="Areas needing attention" />
-              <div className="grid gap-4 sm:grid-cols-2">
-                {progressDisplay.areasNeedingAttention.map((area) => (
-                  <Card key={area.area} className="border-secondary/20 bg-secondary/[0.03]">
-                    <CardContent className="p-5">
-                      <div className="flex items-center justify-between">
-                        <AreaBadge area={area.area} />
-                        <span className="text-sm font-semibold text-secondary">{area.score}%</span>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-[15px]">Progress by area</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    {realProgress.areas.map((area) => (
+                      <div key={area.area}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <AreaBadge area={area.area} />
+                          <StatusBadge status={area.level} />
+                        </div>
+                        <ProgressBar value={area.score} showValue />
                       </div>
-                      <p className="mt-2 text-xs text-muted-foreground">{area.note}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                    ))}
+                  </CardContent>
+                </Card>
               </div>
+
+              {realProgress.areasNeedingAttention.length > 0 && (
+                <div>
+                  <SectionHeader title="Areas needing attention" />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {realProgress.areasNeedingAttention.map((area) => (
+                      <Card key={area.area} className="border-secondary/20 bg-secondary/[0.03]">
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between">
+                            <AreaBadge area={area.area} />
+                            <span className="text-sm font-semibold text-secondary">{area.score}%</span>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">{area.note}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Sparkles className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium text-foreground">No progress data available</p>
+                <p className="text-xs text-muted-foreground mt-1">Assessments recorded for this child will appear here as learning progress.</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -457,33 +511,51 @@ export default function StudentDetailPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
             <Card>
               <CardHeader>
-                <CardTitle className="text-[15px]">Finance summary</CardTitle>
+                <CardTitle className="text-[15px]">Assigned fee structures</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between border-b border-border/70 pb-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Term 3 tuition</p>
-                    <p className="mt-1 text-sm font-medium">$1,250.00</p>
-                  </div>
-                  <StatusBadge status="Paid" />
-                </div>
-                <div className="flex items-center gap-2 pt-4 text-xs text-primary">
-                  <CheckCircle2 className="h-4 w-4" /> All payments up to date
-                </div>
+              <CardContent className="space-y-4">
+                {realStudentFees.length > 0 ? (
+                  <>
+                    <div className="space-y-3">
+                      {realStudentFees.map((fee) => (
+                        <div key={fee.id} className="flex items-center justify-between border-b border-border/70 pb-3 last:border-0 last:pb-0">
+                          <div>
+                            <p className="text-sm font-medium">{fee.feeStructure}</p>
+                            <p className="text-xs text-muted-foreground">Due: {fee.dueDate} · Amount: ${fee.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          </div>
+                          <StatusBadge status={fee.status} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-2 border-t border-border/70">
+                      {calculatedOutstandingBalance === 0 ? (
+                        <div className="flex items-center gap-2 text-xs text-primary">
+                          <CheckCircle2 className="h-4 w-4" /> All fees paid up to date
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-400 font-medium">
+                          Remaining balance: ${calculatedOutstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No fees assigned yet.</p>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-[15px]">Recent payments</CardTitle>
+                <CardTitle className="text-[15px]">Payment receipts</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {studentPayments.length ? (
-                  studentPayments.map((item) => (
+                {realPayments.length ? (
+                  realPayments.map((item) => (
                     <div key={item.id} className="flex items-center justify-between border-b border-border/70 pb-3 last:border-0">
                       <div>
                         <p className="text-sm font-medium">{item.formattedAmount}</p>
-                        <p className="text-xs text-muted-foreground">{item.type} · {item.date}</p>
+                        <p className="text-xs text-muted-foreground">{item.type} · {item.method} · {item.date}</p>
                       </div>
                       <StatusBadge status={item.status} />
                     </div>

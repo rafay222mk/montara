@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { MoreHorizontal, Users, ShieldAlert } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { MoreHorizontal, Users } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
-import { AvatarText, DataTable, FilterBar, PageHeader, StatusBadge } from '@/components/shared';
+import { AvatarText, ConfirmDialog, DataTable, FilterBar, PageHeader, StatusBadge } from '@/components/shared';
 import { StudentForm } from '@/components/forms/record-forms';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { studentsApi } from '@/lib/api/students';
@@ -20,8 +20,14 @@ export default function StudentsPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Deactivate state
+  const [deactivatingStudent, setDeactivatingStudent] = useState<Student | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
+
   const { user } = useAuth();
 
   const loadData = useCallback(async () => {
@@ -54,14 +60,38 @@ export default function StudentsPage() {
     loadData();
   }, [loadData]);
 
-  const handleDeactivate = async (id: string) => {
-    if (!window.confirm('Are you sure you want to deactivate this student record?')) return;
+  const handleDeactivateConfirm = async () => {
+    if (!deactivatingStudent) return;
+    setDeactivating(true);
     try {
-      await studentsApi.delete(id);
+      await studentsApi.delete(deactivatingStudent.id);
+      setDeactivatingStudent(null);
       loadData();
     } catch (err: any) {
-      alert(err?.message || 'Failed to deactivate student');
+      console.error('Failed to deactivate student:', err);
+    } finally {
+      setDeactivating(false);
     }
+  };
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    const q = searchQuery.toLowerCase();
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.classroom.toLowerCase().includes(q) ||
+        s.guardian.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q)
+    );
+  }, [students, searchQuery]);
+
+  const hasActiveFilters = Boolean(searchQuery || selectedClassroomId !== 'all' || selectedStatus !== 'all');
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedClassroomId('all');
+    setSelectedStatus('all');
   };
 
   const isEditable = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
@@ -75,7 +105,13 @@ export default function StudentsPage() {
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
-        <FilterBar>
+        <FilterBar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search students by name, classroom, guardian..."
+          onReset={handleResetFilters}
+          hasActiveFilters={hasActiveFilters}
+        >
           <Select value={selectedClassroomId} onValueChange={setSelectedClassroomId} disabled={loading}>
             <SelectTrigger className="w-[180px] bg-card border-border text-xs">
               <SelectValue placeholder="All classrooms" />
@@ -115,17 +151,21 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {!loading && !error && students.length === 0 && (
+      {!loading && !error && filteredStudents.length === 0 && (
         <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
           <Users className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
-          <h3 className="text-sm font-semibold text-foreground">No students found</h3>
-          <p className="text-xs text-muted-foreground mt-1">No student records match the selected filters.</p>
+          <h3 className="text-sm font-semibold text-foreground">
+            {hasActiveFilters ? 'No students match your search' : 'No students found'}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            {hasActiveFilters ? 'Try adjusting your search query or filters.' : 'No student records registered in this tenant.'}
+          </p>
         </div>
       )}
 
-      {!loading && !error && students.length > 0 && (
+      {!loading && !error && filteredStudents.length > 0 && (
         <DataTable headers={['Student', 'Student ID', 'Classroom', 'Age', 'Parent', 'Status', '']}>
-          {students.map((student) => (
+          {filteredStudents.map((student) => (
             <TableRow key={student.id}>
               <TableCell>
                 <Link href={`/students/${student.id}`}>
@@ -153,7 +193,7 @@ export default function StudentsPage() {
                       <StudentForm studentId={student.id} onSuccess={loadData} trigger={
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>Edit profile</DropdownMenuItem>
                       } />
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeactivate(student.id)}>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeactivatingStudent(student)}>
                         Deactivate Student
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -166,6 +206,15 @@ export default function StudentsPage() {
           ))}
         </DataTable>
       )}
+
+      <ConfirmDialog
+        open={!!deactivatingStudent}
+        onOpenChange={(open) => !open && setDeactivatingStudent(null)}
+        title="Deactivate Student"
+        description={deactivatingStudent ? `Are you sure you want to deactivate ${deactivatingStudent.name}? They will be marked as inactive.` : ''}
+        confirmLabel="Deactivate"
+        onConfirm={handleDeactivateConfirm}
+      />
     </AppShell>
   );
 }

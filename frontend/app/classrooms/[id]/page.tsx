@@ -12,6 +12,9 @@ import { classroomsApi } from '@/lib/api/classrooms';
 import { studentsApi } from '@/lib/api/students';
 import { mapApiClassroom, mapApiStudent } from '@/lib/utils';
 import { Classroom, Student } from '@/types';
+import { useAuth } from '@/lib/auth/auth-context';
+import { ClassroomForm } from '@/components/forms/record-forms';
+import { Button } from '@/components/ui/button';
 
 export default function ClassroomDetailPage() {
   const params = useParams<{ id: string }>();
@@ -64,18 +67,29 @@ export default function ClassroomDetailPage() {
     );
   }
 
+  const { user } = useAuth();
+  const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
+
   return (
     <AppShell>
       <Link href="/classrooms" className="mb-6 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to classrooms
       </Link>
       
-      <PageHeader
-        eyebrow="Academic / Classroom"
-        title={room.name}
-        description={room.description}
-        action="Edit classroom"
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/70 mb-1">Academic / Classroom</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">{room.name}</h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{room.description || 'Prepared Montessori environment.'}</p>
+        </div>
+        {canManage && (
+          <ClassroomForm
+            classroomId={room.id}
+            onSuccess={loadData}
+            trigger={<Button variant="outline">Edit classroom</Button>}
+          />
+        )}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

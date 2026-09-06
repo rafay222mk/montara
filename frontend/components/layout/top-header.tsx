@@ -132,10 +132,22 @@ export function TopHeader({ onMenu }: { onMenu: () => void }) {
     router.push(target);
   };
 
-  const handleSearchClick = () => {
-    startNavigation('/students');
-    router.push('/students');
-  };
+  const handleSearchClick = useCallback(() => {
+    const target = user?.role === 'PARENT' ? '/parent' : '/students';
+    startNavigation(target);
+    router.push(target);
+  }, [user, startNavigation, router]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        handleSearchClick();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSearchClick]);
 
   return (
     <header className="flex h-[76px] shrink-0 items-center justify-between border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-8">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { AlertTriangle, ArrowUpRight, Award, BarChart3, BookOpenCheck, Target } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { AreaBadge, PageHeader, ProgressBar, ProgressRing, SectionHeader, StatCard, StatusBadge } from '@/components/shared';
@@ -202,9 +203,12 @@ export default function LearningProgressPage() {
                           <span className="text-sm font-semibold text-secondary">{item.score}%</span>
                         </div>
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.note}</p>
-                        <button className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                        <Link
+                          href="/curriculum"
+                          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
                           Explore invitations <ArrowUpRight className="h-3 w-3" />
-                        </button>
+                        </Link>
                       </div>
                     </CardContent>
                   </Card>

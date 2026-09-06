@@ -30,6 +30,8 @@ interface LocalRecord {
 export default function AttendancePage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>('none');
+  const [parentChildren, setParentChildren] = useState<Student[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('none');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [localRecords, setLocalRecords] = useState<LocalRecord[]>([]);
 
@@ -46,8 +48,26 @@ export default function AttendancePage() {
   const { user } = useAuth();
   const isReadOnly = user?.role === 'PARENT';
 
-  // Load classrooms list
+  // Load classrooms or parent children list
   useEffect(() => {
+    if (user?.role === 'PARENT') {
+      studentsApi.list({ isActive: true })
+        .then((data) => {
+          const mapped = data.map(mapApiStudent);
+          setParentChildren(mapped);
+          if (mapped.length > 0) {
+            setSelectedChildId(mapped[0].id);
+          } else {
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          setError(err?.message || 'Failed to load children');
+          setLoading(false);
+        });
+      return;
+    }
+
     classroomsApi.list()
       .then((data) => {
         const mapped = data.map(mapApiClassroom);
@@ -62,10 +82,39 @@ export default function AttendancePage() {
         setError(err?.message || 'Failed to load classrooms');
         setLoading(false);
       });
-  }, []);
+  }, [user?.role]);
 
   // Load students & attendance records
   const loadAttendance = useCallback(async () => {
+    if (user?.role === 'PARENT') {
+      if (!selectedChildId || selectedChildId === 'none') return;
+      setLoading(true);
+      setError(null);
+      try {
+        const child = parentChildren.find((c) => c.id === selectedChildId);
+        const apiAttendance = await attendanceApi.list(date, undefined, selectedChildId);
+        const records: LocalRecord[] = apiAttendance.map((att) => {
+          const mappedAtt = mapApiAttendance(att);
+          return {
+            studentId: selectedChildId,
+            studentName: child?.name || mappedAtt.studentName,
+            initials: child?.initials || mappedAtt.initials,
+            color: child?.color || mappedAtt.color,
+            classroom: child?.classroom || mappedAtt.classroom,
+            status: mappedAtt.status,
+            notes: mappedAtt.notes,
+            arrivalTime: mappedAtt.arrivalTime,
+          };
+        });
+        setLocalRecords(records);
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load attendance records');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (selectedClassroomId === 'none') return;
     setLoading(true);
     setError(null);
@@ -114,7 +163,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedClassroomId, date]);
+  }, [user?.role, selectedClassroomId, selectedChildId, date, parentChildren]);
 
   useEffect(() => {
     loadAttendance();
@@ -151,17 +200,10 @@ export default function AttendancePage() {
       setIsOnline(true);
       handleSync();
     };
-    const goOffline = () => {
-      setIsOnline(false);
-    };
+    const goOffline = () => setIsOnline(false);
 
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-
-    // Initial sync trigger if online on mount
-    if (navigator.onLine && attendanceQueue.size() > 0) {
-      handleSync();
-    }
 
     return () => {
       window.removeEventListener('online', goOnline);
@@ -171,20 +213,18 @@ export default function AttendancePage() {
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setLocalRecords((prev) =>
-      prev.map((r) => (r.studentId === studentId ? { ...r, status } : r))
+      prev.map((rec) => (rec.studentId === studentId ? { ...rec, status } : rec))
     );
   };
 
   const handleNotesChange = (studentId: string, notes: string) => {
     setLocalRecords((prev) =>
-      prev.map((r) => (r.studentId === studentId ? { ...r, notes } : r))
+      prev.map((rec) => (rec.studentId === studentId ? { ...rec, notes } : rec))
     );
   };
 
   const handleQuickMark = (status: AttendanceStatus) => {
-    setLocalRecords((prev) =>
-      prev.map((r) => ({ ...r, status }))
-    );
+    setLocalRecords((prev) => prev.map((rec) => ({ ...rec, status })));
   };
 
   const handleSave = async () => {
@@ -239,21 +279,23 @@ export default function AttendancePage() {
     <AppShell>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <p className="eyebrow mb-2">Academic / Daily rhythm</p>
+          <p className="eyebrow mb-2">{isReadOnly ? 'Family / Daily rhythm' : 'Academic / Daily rhythm'}</p>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Attendance</h1>
-            {isOnline ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/30 border border-emerald-900/50 px-2.5 py-1 rounded-md">
-                <Wifi className="h-3 w-3" /> Online
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500 bg-amber-950/30 border border-amber-900/50 px-2.5 py-1 rounded-md">
-                <WifiOff className="h-3 w-3" /> Offline
-              </span>
+            {!isReadOnly && (
+              isOnline ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/30 border border-emerald-900/50 px-2.5 py-1 rounded-md">
+                  <Wifi className="h-3 w-3" /> Online
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500 bg-amber-950/30 border border-amber-900/50 px-2.5 py-1 rounded-md">
+                  <WifiOff className="h-3 w-3" /> Offline
+                </span>
+              )
             )}
           </div>
           <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            A gentle, accurate pulse on who is here and ready to learn.
+            {isReadOnly ? 'Daily attendance and check-in records for your child.' : 'A gentle, accurate pulse on who is here and ready to learn.'}
           </p>
         </div>
         {!isReadOnly && selectedClassroomId !== 'none' && (
@@ -275,19 +317,32 @@ export default function AttendancePage() {
           />
         </div>
 
-        <Select value={selectedClassroomId} onValueChange={setSelectedClassroomId} disabled={loading}>
-          <SelectTrigger className="w-[180px] bg-card border-border text-xs">
-            <SelectValue placeholder="All classrooms" />
-          </SelectTrigger>
-          <SelectContent>
-            {classrooms.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {isReadOnly ? (
+          <Select value={selectedChildId} onValueChange={setSelectedChildId} disabled={loading || parentChildren.length === 0}>
+            <SelectTrigger className="w-[180px] bg-card border-border text-xs">
+              <SelectValue placeholder="Select child" />
+            </SelectTrigger>
+            <SelectContent>
+              {parentChildren.map((child) => (
+                <SelectItem key={child.id} value={child.id}>{child.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={selectedClassroomId} onValueChange={setSelectedClassroomId} disabled={loading}>
+            <SelectTrigger className="w-[180px] bg-card border-border text-xs">
+              <SelectValue placeholder="All classrooms" />
+            </SelectTrigger>
+            <SelectContent>
+              {classrooms.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {pendingCount > 0 && (
+      {pendingCount > 0 && !isReadOnly && (
         <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-lg bg-amber-950/20 border border-amber-900/35 text-amber-500 text-sm">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -302,7 +357,7 @@ export default function AttendancePage() {
             variant="outline" 
             className="border-amber-900/40 text-amber-500 hover:bg-amber-950/30"
           >
-            {syncing ? 'Syncing...' : 'Sync Now'}
+            {syncing ? 'Sync Now' : 'Sync Now'}
           </Button>
         </div>
       )}
@@ -319,7 +374,7 @@ export default function AttendancePage() {
         </div>
       )}
 
-      <AttendanceSummary {...summary} />
+      {!isReadOnly && <AttendanceSummary {...summary} />}
 
       {loading ? (
         <div className="flex justify-center items-center h-48 mt-6">
@@ -328,9 +383,13 @@ export default function AttendancePage() {
       ) : localRecords.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center mt-6">
           <Users className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
-          <h3 className="text-sm font-semibold text-foreground">No students in classroom</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {isReadOnly ? 'No attendance record found' : 'No students in classroom'}
+          </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            This prepared environment doesn't contain any registered children.
+            {isReadOnly
+              ? 'No attendance was logged for this date. Check the selected date or contact your school.'
+              : "This prepared environment doesn't contain any registered children."}
           </p>
         </div>
       ) : (

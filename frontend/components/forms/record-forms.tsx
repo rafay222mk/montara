@@ -20,7 +20,7 @@ import { curriculumApi } from '@/lib/api/curriculum';
 import { hrApi } from '@/lib/api/hr';
 import { inventoryApi } from '@/lib/api/inventory';
 import { communicationApi } from '@/lib/api/communication';
-import { mapApiStudent, mapApiClassroom, mapObservationAreaToApi, mapObservationStatusToApi, mapAssessmentLevelToApi, mapFeeFrequencyToApi, mapPaymentMethodToApi, mapLessonPlanStatusToApi, mapApiLesson } from '@/lib/utils';
+import { mapApiStudent, mapApiClassroom, mapObservationAreaToApi, mapObservationStatusToApi, mapAssessmentLevelToApi, mapFeeFrequencyToApi, mapPaymentMethodToApi, mapLessonPlanStatusToApi, mapApiLesson, mapApiObservationArea, mapApiObservationStatus, mapApiAssessmentLevel, mapApiFeeFrequency } from '@/lib/utils';
 import { LessonPlanStatus, Employee, LeaveRequest, InventoryItem, Announcement } from '@/types';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -416,12 +416,14 @@ export function ClassroomForm({
 }
 
 // ========================================================
-// LIVE OBSERVATION FORM (CREATE)
+// LIVE OBSERVATION FORM (CREATE / UPDATE)
 // ========================================================
 export function ObservationForm({
+  observationId,
   onSuccess,
   trigger = <Button>Add observation</Button>,
 }: {
+  observationId?: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
 }) {
@@ -445,24 +447,39 @@ export function ObservationForm({
       .then((data) => {
         const mapped = data.map(mapApiStudent);
         setStudents(mapped);
-        if (mapped.length > 0) {
+        if (!observationId && mapped.length > 0) {
           setStudentId(mapped[0].id);
         }
       })
       .catch((err) => console.error('Failed to load students for observations:', err))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, observationId]);
 
-  // Reset form inputs
+  // Reset or load existing observation
   useEffect(() => {
     if (!open) return;
-    setArea('Practical Life');
-    setProgress('Introduced');
-    setSkill('');
-    setNotes('');
-    setObservedAt(new Date().toISOString().split('T')[0]);
-    setError(null);
-  }, [open]);
+    if (observationId) {
+      setLoading(true);
+      observationsApi.get(observationId)
+        .then((obs) => {
+          setStudentId(obs.studentId);
+          setArea(mapApiObservationArea(obs.area));
+          setProgress(mapApiObservationStatus(obs.progress as any));
+          setSkill(obs.skill);
+          setNotes(obs.notes);
+          setObservedAt(obs.observedAt ? obs.observedAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+        })
+        .catch((err) => setError(err?.message || 'Failed to load observation'))
+        .finally(() => setLoading(false));
+    } else {
+      setArea('Practical Life');
+      setProgress('Introduced');
+      setSkill('');
+      setNotes('');
+      setObservedAt(new Date().toISOString().split('T')[0]);
+      setError(null);
+    }
+  }, [open, observationId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,7 +500,11 @@ export function ObservationForm({
     };
 
     try {
-      await observationsApi.create(payload);
+      if (observationId) {
+        await observationsApi.update(observationId, payload);
+      } else {
+        await observationsApi.create(payload);
+      }
       setOpen(false);
       onSuccess?.();
     } catch (err: any) {
@@ -498,9 +519,11 @@ export function ObservationForm({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add observation</DialogTitle>
+          <DialogTitle>{observationId ? 'Edit observation' : 'Add observation'}</DialogTitle>
           <DialogDescription>
-            Record a meaningful moment from the prepared environment.
+            {observationId
+              ? 'Update observation notes and progress level.'
+              : 'Record a meaningful moment from the prepared environment.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -512,7 +535,7 @@ export function ObservationForm({
           )}
 
           <Field label="Student">
-            <Select value={studentId} onValueChange={setStudentId} disabled={loading}>
+            <Select value={studentId} onValueChange={setStudentId} disabled={loading || !!observationId}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose student" />
               </SelectTrigger>
@@ -590,7 +613,7 @@ export function ObservationForm({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save observation'}
+              {loading ? 'Saving...' : observationId ? 'Save changes' : 'Save observation'}
             </Button>
           </DialogFooter>
         </form>
@@ -601,12 +624,14 @@ export function ObservationForm({
 
 
 // ========================================================
-// LIVE ASSESSMENT FORM (CREATE)
+// LIVE ASSESSMENT FORM (CREATE / UPDATE)
 // ========================================================
 export function AssessmentForm({
+  assessmentId,
   onSuccess,
   trigger = <Button>Create assessment</Button>,
 }: {
+  assessmentId?: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
 }) {
@@ -631,25 +656,41 @@ export function AssessmentForm({
       .then((data) => {
         const mapped = data.map(mapApiStudent);
         setStudents(mapped);
-        if (mapped.length > 0) {
+        if (!assessmentId && mapped.length > 0) {
           setStudentId(mapped[0].id);
         }
       })
       .catch((err) => console.error('Failed to load students for assessments:', err))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, assessmentId]);
 
-  // Reset form inputs
+  // Reset or load existing assessment
   useEffect(() => {
     if (!open) return;
-    setArea('Practical Life');
-    setLevel('Beginning');
-    setSkill('');
-    setScore('');
-    setComments('');
-    setAssessedAt(new Date().toISOString().split('T')[0]);
-    setError(null);
-  }, [open]);
+    if (assessmentId) {
+      setLoading(true);
+      assessmentsApi.get(assessmentId)
+        .then((item) => {
+          setStudentId(item.studentId);
+          setArea(mapApiObservationArea(item.area));
+          setLevel(mapApiAssessmentLevel(item.level as any));
+          setSkill(item.skill);
+          setScore(item.score !== null && item.score !== undefined ? Number(item.score) : '');
+          setComments(item.comments || '');
+          setAssessedAt(item.assessedAt ? item.assessedAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+        })
+        .catch((err) => setError(err?.message || 'Failed to load assessment'))
+        .finally(() => setLoading(false));
+    } else {
+      setArea('Practical Life');
+      setLevel('Beginning');
+      setSkill('');
+      setScore('');
+      setComments('');
+      setAssessedAt(new Date().toISOString().split('T')[0]);
+      setError(null);
+    }
+  }, [open, assessmentId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,7 +717,11 @@ export function AssessmentForm({
     }
 
     try {
-      await assessmentsApi.create(payload);
+      if (assessmentId) {
+        await assessmentsApi.update(assessmentId, payload);
+      } else {
+        await assessmentsApi.create(payload);
+      }
       setOpen(false);
       onSuccess?.();
     } catch (err: any) {
@@ -691,9 +736,11 @@ export function AssessmentForm({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create assessment</DialogTitle>
+          <DialogTitle>{assessmentId ? 'Edit assessment' : 'Create assessment'}</DialogTitle>
           <DialogDescription>
-            Capture a clear progress marker for a child.
+            {assessmentId
+              ? 'Update progress marker or score for this child.'
+              : 'Capture a clear progress marker for a child.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -705,7 +752,7 @@ export function AssessmentForm({
           )}
 
           <Field label="Student">
-            <Select value={studentId} onValueChange={setStudentId} disabled={loading}>
+            <Select value={studentId} onValueChange={setStudentId} disabled={loading || !!assessmentId}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose student" />
               </SelectTrigger>
@@ -799,7 +846,7 @@ export function AssessmentForm({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save assessment'}
+              {loading ? 'Saving...' : assessmentId ? 'Save changes' : 'Save assessment'}
             </Button>
           </DialogFooter>
         </form>
@@ -809,9 +856,17 @@ export function AssessmentForm({
 }
 
 // ========================================================
-// LIVE FEE STRUCTURE FORM (CREATE)
+// LIVE FEE STRUCTURE FORM (CREATE / UPDATE)
 // ========================================================
-export function FeeForm({ onSuccess }: { onSuccess?: () => void }) {
+export function FeeForm({
+  structureId,
+  onSuccess,
+  trigger = <Button>Add fee structure</Button>,
+}: {
+  structureId?: string;
+  onSuccess?: () => void;
+  trigger?: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
@@ -823,12 +878,25 @@ export function FeeForm({ onSuccess }: { onSuccess?: () => void }) {
 
   useEffect(() => {
     if (!open) return;
-    setName('');
-    setAmount('');
-    setFrequency('Monthly');
-    setDescription('');
-    setError(null);
-  }, [open]);
+    if (structureId) {
+      setLoading(true);
+      financeApi.structures.get(structureId)
+        .then((s) => {
+          setName(s.name);
+          setAmount(Number(s.amount));
+          setFrequency(mapApiFeeFrequency(s.frequency));
+          setDescription(s.description || '');
+        })
+        .catch((err) => setError(err?.message || 'Failed to load fee structure'))
+        .finally(() => setLoading(false));
+    } else {
+      setName('');
+      setAmount('');
+      setFrequency('Monthly');
+      setDescription('');
+      setError(null);
+    }
+  }, [open, structureId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -839,13 +907,19 @@ export function FeeForm({ onSuccess }: { onSuccess?: () => void }) {
     setError(null);
     setLoading(true);
 
+    const payload = {
+      name,
+      amount: Number(amount),
+      frequency: mapFeeFrequencyToApi(frequency),
+      description: description || undefined,
+    };
+
     try {
-      await financeApi.structures.create({
-        name,
-        amount: Number(amount),
-        frequency: mapFeeFrequencyToApi(frequency),
-        description: description || undefined,
-      });
+      if (structureId) {
+        await financeApi.structures.update(structureId, payload);
+      } else {
+        await financeApi.structures.create(payload);
+      }
       setOpen(false);
       onSuccess?.();
     } catch (err: any) {
@@ -858,13 +932,13 @@ export function FeeForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Add fee structure</Button>
+        {trigger}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add fee structure</DialogTitle>
+          <DialogTitle>{structureId ? 'Edit fee structure' : 'Add fee structure'}</DialogTitle>
           <DialogDescription>
-            Set up a reusable fee for student accounts.
+            {structureId ? 'Update this recurring or one-time fee.' : 'Set up a reusable fee for student accounts.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -927,7 +1001,7 @@ export function FeeForm({ onSuccess }: { onSuccess?: () => void }) {
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Create structure'}
+              {loading ? 'Saving...' : structureId ? 'Save changes' : 'Create structure'}
             </Button>
           </DialogFooter>
         </form>
@@ -1351,12 +1425,14 @@ export function PaymentForm({ onSuccess }: { onSuccess?: () => void }) {
 }
 
 // ========================================================
-// LESSON FORM (CREATE CURRICULUM LESSON / MATERIAL)
+// LESSON FORM (CREATE / UPDATE CURRICULUM LESSON)
 // ========================================================
 export function LessonForm({
+  lessonId,
   onSuccess,
   trigger = <Button>Add lesson</Button>,
 }: {
+  lessonId?: string;
   onSuccess?: () => void;
   trigger?: React.ReactNode;
 }) {
@@ -1372,33 +1448,53 @@ export function LessonForm({
 
   useEffect(() => {
     if (!open) return;
-    setArea('PRACTICAL_LIFE');
-    setTitle('');
-    setDescription('');
-    setAgeGroup('3-6 years');
-    setSequence('1');
-    setMaterialsNeeded('');
-    setError(null);
-  }, [open]);
+    if (lessonId) {
+      setLoading(true);
+      curriculumApi.lessons.get(lessonId)
+        .then((l) => {
+          setArea(l.area);
+          setTitle(l.title);
+          setDescription(l.description || '');
+          setAgeGroup(l.ageGroup || '3-6 years');
+          setSequence(String(l.sequence || 1));
+          setMaterialsNeeded(l.materialsNeeded || '');
+        })
+        .catch((err) => setError(err?.message || 'Failed to load lesson'))
+        .finally(() => setLoading(false));
+    } else {
+      setArea('PRACTICAL_LIFE');
+      setTitle('');
+      setDescription('');
+      setAgeGroup('3-6 years');
+      setSequence('1');
+      setMaterialsNeeded('');
+      setError(null);
+    }
+  }, [open, lessonId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { setError('Title is required'); return; }
     setError(null);
     setLoading(true);
+    const payload = {
+      area,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      ageGroup: ageGroup.trim() || undefined,
+      sequence: parseInt(sequence) || 1,
+      materialsNeeded: materialsNeeded.trim() || undefined,
+    };
     try {
-      await curriculumApi.lessons.create({
-        area,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        ageGroup: ageGroup.trim() || undefined,
-        sequence: parseInt(sequence) || 1,
-        materialsNeeded: materialsNeeded.trim() || undefined,
-      });
+      if (lessonId) {
+        await curriculumApi.lessons.update(lessonId, payload);
+      } else {
+        await curriculumApi.lessons.create(payload);
+      }
       setOpen(false);
       onSuccess?.();
     } catch (err: any) {
-      setError(err?.message || 'Failed to create lesson');
+      setError(err?.message || 'Failed to save lesson');
     } finally {
       setLoading(false);
     }
@@ -1421,8 +1517,8 @@ export function LessonForm({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Add Curriculum Lesson / Material</DialogTitle>
-          <DialogDescription>Create a new Montessori lesson or material in the curriculum catalog.</DialogDescription>
+          <DialogTitle>{lessonId ? 'Edit Lesson / Material' : 'Add Curriculum Lesson / Material'}</DialogTitle>
+          <DialogDescription>{lessonId ? 'Update lesson details and materials in the curriculum catalog.' : 'Create a new Montessori lesson or material in the curriculum catalog.'}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -1453,7 +1549,7 @@ export function LessonForm({
           </Field>
           <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Add lesson'}</Button>
+            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : lessonId ? 'Save changes' : 'Add lesson'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

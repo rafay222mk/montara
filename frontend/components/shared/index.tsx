@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRight, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowUpRight, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +15,229 @@ export { ProgressBar, ProgressRing } from '@/components/shared/progress';
 export { FormDialog } from '@/components/shared/form-dialog';
 export { ConfirmDialog } from '@/components/shared/confirm-dialog';
 
-export function PageHeader({ eyebrow, title, description, action, href }: { eyebrow?: string; title: string; description?: string; action?: string; href?: string }) { return <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div>{eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}<h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">{title}</h1>{description && <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div>{action && <Button asChild={Boolean(href)} className="gap-2">{href ? <Link href={href}>{action}<ArrowUpRight className="h-4 w-4" /></Link> : <>{action}<ArrowUpRight className="h-4 w-4" /></>}</Button>}</div> }
-export function SectionHeader({ title, action }: { title: string; action?: string }) { return <div className="mb-4 flex items-center justify-between"><h2 className="text-[15px] font-semibold text-foreground">{title}</h2>{action && <button className="text-xs font-medium text-primary hover:text-primary/80">{action}</button>}</div> }
-export function SearchInput({ placeholder = 'Search...' }: { placeholder?: string }) { return <div className="relative min-w-[210px] flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder={placeholder} /></div> }
-export function FilterBar({ children }: { children: React.ReactNode }) { return <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center"><SearchInput placeholder="Search records..." /><Button variant="outline" className="gap-2 sm:w-auto"><SlidersHorizontal className="h-4 w-4" /> Filters</Button>{children}</div> }
-export function StatusBadge({ status }: { status: string }) { const styles: Record<string, string> = { Active: 'border-primary/25 bg-primary/10 text-primary', Paid: 'border-primary/25 bg-primary/10 text-primary', Present: 'border-primary/25 bg-primary/10 text-primary', Proficient: 'border-primary/25 bg-primary/10 text-primary', Advanced: 'border-sky-400/25 bg-sky-400/10 text-sky-300', Pending: 'border-secondary/25 bg-secondary/10 text-secondary', Partially: 'border-secondary/25 bg-secondary/10 text-secondary', Developing: 'border-secondary/25 bg-secondary/10 text-secondary', Late: 'border-secondary/25 bg-secondary/10 text-secondary', Overdue: 'border-destructive/25 bg-destructive/10 text-red-300', Absent: 'border-destructive/25 bg-destructive/10 text-red-300', Beginning: 'border-border bg-muted text-muted-foreground', Excused: 'border-sky-400/25 bg-sky-400/10 text-sky-300' }; return <Badge variant="outline" className={cn('font-medium', styles[status] || 'border-border bg-muted text-muted-foreground')}>{status}</Badge> }
-export function AvatarText({ initials, name, meta, color = 'bg-primary/15 text-primary' }: { initials: string; name: string; meta?: string; color?: string }) { return <div className="flex min-w-0 flex-1 items-center gap-3"><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold', color)}>{initials}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{name}</span>{meta && <span className="block truncate text-xs text-muted-foreground">{meta}</span>}</span></div> }
-export function StatCard({ label, value, change, icon: Icon, tone = 'primary' }: { label: string; value: string; change: string; icon: React.ElementType; tone?: 'primary' | 'amber' | 'blue' | 'rose' }) { const tones = { primary: 'bg-primary/10 text-primary', amber: 'bg-secondary/10 text-secondary', blue: 'bg-sky-400/10 text-sky-300', rose: 'bg-rose-400/10 text-rose-300' }; return <div className="surface rounded-lg p-5 transition-colors hover:border-primary/25"><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{value}</p></div><span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', tones[tone])}><Icon className="h-[18px] w-[18px]" /></span></div><p className="mt-3 text-xs"><span className="font-medium text-primary">{change}</span><span className="ml-1 text-muted-foreground">vs last month</span></p></div> }
-export function EmptyState({ title = 'Nothing here yet', description = 'New records will appear here once they are added.' }: { title?: string; description?: string }) { return <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/40 p-8 text-center"><div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Search className="h-4 w-4 text-muted-foreground" /></div><p className="text-sm font-medium text-foreground">{title}</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">{description}</p></div> }
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+  href,
+  onAction,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  action?: string;
+  href?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">{title}</h1>
+        {description && <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>}
+      </div>
+      {action && (
+        <Button asChild={Boolean(href)} onClick={onAction} className="gap-2 shrink-0">
+          {href ? (
+            <Link href={href}>
+              {action}
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              {action}
+              <ArrowUpRight className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export function SectionHeader({
+  title,
+  action,
+  onAction,
+  href,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+  href?: string;
+}) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>
+      {action && href ? (
+        <Link href={href} className="text-xs font-medium text-primary hover:text-primary/80 hover:underline">
+          {action}
+        </Link>
+      ) : action && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="text-xs font-medium text-primary hover:text-primary/80 hover:underline"
+        >
+          {action}
+        </button>
+      ) : action ? (
+        <span className="text-xs font-medium text-muted-foreground">{action}</span>
+      ) : null}
+    </div>
+  );
+}
+
+export function SearchInput({
+  placeholder = 'Search...',
+  value,
+  onChange,
+}: {
+  placeholder?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
+  return (
+    <div className="relative min-w-[210px] flex-1">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        className="pl-9 bg-card text-xs h-10 border-border"
+        placeholder={placeholder}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    </div>
+  );
+}
+
+export function FilterBar({
+  children,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = 'Search records...',
+  onReset,
+  hasActiveFilters,
+}: {
+  children?: React.ReactNode;
+  searchValue?: string;
+  onSearchChange?: (val: string) => void;
+  searchPlaceholder?: string;
+  onReset?: () => void;
+  hasActiveFilters?: boolean;
+}) {
+  return (
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center flex-1">
+      <SearchInput
+        placeholder={searchPlaceholder}
+        value={searchValue}
+        onChange={onSearchChange}
+      />
+      {hasActiveFilters && onReset && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onReset}
+          className="text-xs text-muted-foreground hover:text-foreground h-10 px-3"
+        >
+          Reset filters
+        </Button>
+      )}
+      {children}
+    </div>
+  );
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Active: 'border-primary/25 bg-primary/10 text-primary',
+    Paid: 'border-primary/25 bg-primary/10 text-primary',
+    Present: 'border-primary/25 bg-primary/10 text-primary',
+    Proficient: 'border-primary/25 bg-primary/10 text-primary',
+    Advanced: 'border-sky-400/25 bg-sky-400/10 text-sky-300',
+    Pending: 'border-secondary/25 bg-secondary/10 text-secondary',
+    Partially: 'border-secondary/25 bg-secondary/10 text-secondary',
+    Developing: 'border-secondary/25 bg-secondary/10 text-secondary',
+    Late: 'border-secondary/25 bg-secondary/10 text-secondary',
+    Overdue: 'border-destructive/25 bg-destructive/10 text-red-300',
+    Absent: 'border-destructive/25 bg-destructive/10 text-red-300',
+    Beginning: 'border-border bg-muted text-muted-foreground',
+    Excused: 'border-sky-400/25 bg-sky-400/10 text-sky-300',
+  };
+  return (
+    <Badge variant="outline" className={cn('font-medium', styles[status] || 'border-border bg-muted text-muted-foreground')}>
+      {status}
+    </Badge>
+  );
+}
+
+export function AvatarText({ initials, name, meta, color = 'bg-primary/15 text-primary' }: { initials: string; name: string; meta?: string; color?: string }) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold', color)}>
+        {initials}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-foreground">{name}</span>
+        {meta && <span className="block truncate text-xs text-muted-foreground">{meta}</span>}
+      </span>
+    </div>
+  );
+}
+
+export function StatCard({
+  label,
+  value,
+  change,
+  icon: Icon,
+  tone = 'primary',
+}: {
+  label: string;
+  value: string;
+  change: string;
+  icon: React.ElementType;
+  tone?: 'primary' | 'amber' | 'blue' | 'rose';
+}) {
+  const tones = {
+    primary: 'bg-primary/10 text-primary',
+    amber: 'bg-secondary/10 text-secondary',
+    blue: 'bg-sky-400/10 text-sky-300',
+    rose: 'bg-rose-400/10 text-rose-300',
+  };
+  return (
+    <div className="surface rounded-lg p-5 transition-colors hover:border-primary/25 border border-border/60">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
+        </div>
+        <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', tones[tone])}>
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+      </div>
+      <p className="mt-3 text-xs">
+        <span className="font-medium text-primary">{change}</span>
+        <span className="ml-1 text-muted-foreground">vs last month</span>
+      </p>
+    </div>
+  );
+}
+
+export function EmptyState({
+  title = 'Nothing here yet',
+  description = 'New records will appear here once they are added.',
+}: {
+  title?: string;
+  description?: string;
+}) {
+  return (
+    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/40 p-8 text-center">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+        <Search className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 max-w-xs text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}

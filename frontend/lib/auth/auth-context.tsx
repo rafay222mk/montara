@@ -133,7 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatarColor: getAvatarColor(response.user.role),
           schoolName: 'Montara Academy',
         });
-        router.push('/');
+        const target = response.user.role === 'PARENT' ? '/parent' : '/';
+        router.push(target);
       } catch (error) {
         setIsLoading(false);
         throw error;

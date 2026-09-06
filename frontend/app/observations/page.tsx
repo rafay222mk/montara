@@ -1,7 +1,7 @@
 'use client';
 
-import { CalendarDays, SlidersHorizontal, Sparkles } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { FilterBar, ObservationCard, PageHeader } from '@/components/shared';
 import { ObservationForm } from '@/components/forms/record-forms';
@@ -16,12 +16,14 @@ export default function ObservationsPage() {
   const [items, setItems] = useState<Observation[]>([]);
   const [selectedArea, setSelectedArea] = useState<MontessoriArea | 'all'>('all');
   const [selectedProgress, setSelectedProgress] = useState<ObservationProgress | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const { user } = useAuth();
-  const isReadOnly = user?.role === 'PARENT';
+  const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN' || user?.role === 'TEACHER';
+  const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'SCHOOL_ADMIN';
 
   const loadObservations = useCallback(async () => {
     setLoading(true);
@@ -60,6 +62,27 @@ export default function ObservationsPage() {
     'Social Emotional',
   ];
 
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.studentName.toLowerCase().includes(q) ||
+        item.skill.toLowerCase().includes(q) ||
+        item.note.toLowerCase().includes(q) ||
+        item.area.toLowerCase().includes(q) ||
+        item.teacher.toLowerCase().includes(q)
+    );
+  }, [items, searchQuery]);
+
+  const hasActiveFilters = Boolean(searchQuery || selectedArea !== 'all' || selectedProgress !== 'all');
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedArea('all');
+    setSelectedProgress('all');
+  };
+
   return (
     <AppShell>
       <PageHeader
@@ -69,7 +92,13 @@ export default function ObservationsPage() {
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
-        <FilterBar>
+        <FilterBar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search observations by student, skill, note..."
+          onReset={handleResetFilters}
+          hasActiveFilters={hasActiveFilters}
+        >
           <Select value={selectedProgress} onValueChange={(val) => setSelectedProgress(val as any)} disabled={loading}>
             <SelectTrigger className="w-[160px] bg-card border-border h-10 text-xs">
               <SelectValue placeholder="All progress" />
@@ -85,7 +114,7 @@ export default function ObservationsPage() {
           </Select>
         </FilterBar>
 
-        {!isReadOnly && <ObservationForm onSuccess={loadObservations} />}
+        {canCreate && <ObservationForm onSuccess={loadObservations} />}
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2 items-center">
@@ -119,20 +148,28 @@ export default function ObservationsPage() {
         </div>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {!loading && !error && filteredItems.length === 0 && (
         <div className="rounded-lg border border-dashed border-border bg-card p-12 text-center">
           <Sparkles className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
-          <h3 className="text-sm font-semibold text-foreground">No observations recorded</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {hasActiveFilters ? 'No observations match your filters' : 'No observations recorded'}
+          </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Capture a meaningful moment from the prepared environment.
+            {hasActiveFilters ? 'Try adjusting your search query or area filters.' : 'Capture a meaningful moment from the prepared environment.'}
           </p>
         </div>
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!loading && !error && filteredItems.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
-          {items.map((item) => (
-            <ObservationCard key={item.id} observation={item} />
+          {filteredItems.map((item) => (
+            <ObservationCard
+              key={item.id}
+              observation={item}
+              canManage={canManage}
+              onUpdated={loadObservations}
+              onDeleted={loadObservations}
+            />
           ))}
         </div>
       )}

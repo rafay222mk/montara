@@ -38,4 +38,8 @@ export default new DataSource({
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
 
   synchronize: false,
+
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false,
 });
